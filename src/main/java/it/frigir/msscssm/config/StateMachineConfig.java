@@ -1,17 +1,17 @@
 package it.frigir.msscssm.config;
 
-import it.frigir.msscssm.config.action.*;
-import it.frigir.msscssm.config.guard.PaymentIdGuard;
 import it.frigir.msscssm.domain.PaymentEvent;
 import it.frigir.msscssm.domain.PaymentState;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.statemachine.action.Action;
 import org.springframework.statemachine.config.EnableStateMachineFactory;
 import org.springframework.statemachine.config.StateMachineConfigurerAdapter;
 import org.springframework.statemachine.config.builders.StateMachineConfigurationConfigurer;
 import org.springframework.statemachine.config.builders.StateMachineStateConfigurer;
 import org.springframework.statemachine.config.builders.StateMachineTransitionConfigurer;
+import org.springframework.statemachine.guard.Guard;
 import org.springframework.statemachine.listener.StateMachineListenerAdapter;
 import org.springframework.statemachine.state.State;
 
@@ -23,13 +23,13 @@ import java.util.EnumSet;
 @Configuration
 public class StateMachineConfig extends StateMachineConfigurerAdapter<PaymentState, PaymentEvent> {
 
-    private final PreAuthAction preAuthAction;
-    private final PreAuthApprovedAction preAuthApprovedAction;
-    private final PreAuthDeclinedAction preAuthDeclinedAction;
-    private final AuthAction authAction;
-    private final AuthApprovedAction authApprovedAction;
-    private final AuthDeclinedAction authDeclined;
-    private final PaymentIdGuard paymentIdGuard;
+    private final Action<PaymentState, PaymentEvent> preAuthAction;
+    private final Action<PaymentState, PaymentEvent> preAuthApprovedAction;
+    private final Action<PaymentState, PaymentEvent> preAuthDeclinedAction;
+    private final Action<PaymentState, PaymentEvent> authAction;
+    private final Action<PaymentState, PaymentEvent> authApprovedAction;
+    private final Action<PaymentState, PaymentEvent> authDeclinedAction;
+    private final Guard<PaymentState, PaymentEvent> paymentIdGuard;
 
     @Override
     public void configure(StateMachineStateConfigurer<PaymentState, PaymentEvent> states) throws Exception {
@@ -59,7 +59,7 @@ public class StateMachineConfig extends StateMachineConfigurerAdapter<PaymentSta
                 .action(authApprovedAction)
                 .and()
                 .withExternal().source(PaymentState.PRE_AUTH).target(PaymentState.AUTH_ERR).event(PaymentEvent.AUTH_DECLINED)
-                .action(authDeclined);
+                .action(authDeclinedAction);
     }
 
     @Override
