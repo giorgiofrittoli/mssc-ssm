@@ -37,9 +37,20 @@ public class StateMachineConfig extends StateMachineConfigurerAdapter<PaymentSta
         transitions.withExternal()
                 .source(PaymentState.NEW).target(PaymentState.NEW).event(PaymentEvent.PRE_AUTHORIZE).action(preAuthAction())
                 .and()
-                .withExternal().source(PaymentState.NEW).target(PaymentState.PRE_AUTH).event(PaymentEvent.PRE_AUTH_APPROVED)
+                .withExternal()
+                .source(PaymentState.NEW).target(PaymentState.PRE_AUTH).event(PaymentEvent.PRE_AUTH_APPROVED)
                 .and()
-                .withExternal().source(PaymentState.NEW).target(PaymentState.PRE_AUTH_ERR).event(PaymentEvent.PRE_AUTH_DECLINED);
+                .withExternal()
+                .source(PaymentState.NEW).target(PaymentState.PRE_AUTH_ERR).event(PaymentEvent.PRE_AUTH_DECLINED)
+                .and()
+                .withExternal()
+                .source(PaymentState.PRE_AUTH).target(PaymentState.PRE_AUTH).event(PaymentEvent.AUTHORIZED).action(authAction())
+                .and()
+                .withExternal()
+                .source(PaymentState.PRE_AUTH).target(PaymentState.AUTH).event(PaymentEvent.AUTH_APPROVED)
+                .and()
+                .withExternal()
+                .source(PaymentState.PRE_AUTH).target(PaymentState.AUTH_ERR).event(PaymentEvent.AUTH_DECLINED);
     }
 
     @Override
@@ -47,7 +58,7 @@ public class StateMachineConfig extends StateMachineConfigurerAdapter<PaymentSta
         StateMachineListenerAdapter<PaymentState, PaymentEvent> adapter = new StateMachineListenerAdapter<>() {
             @Override
             public void stateChanged(State<PaymentState, PaymentEvent> from, State<PaymentState, PaymentEvent> to) {
-                log.info(String.format("stateChanged(from: %s, to %s)", to, from));
+                log.info(String.format("stateChanged(from: %s, to %s , %s - %s)", from.getId(), to.getId(), from, to));
             }
         };
 
@@ -55,7 +66,7 @@ public class StateMachineConfig extends StateMachineConfigurerAdapter<PaymentSta
                 .listener(adapter);
     }
 
-    public Action<PaymentState, PaymentEvent> preAuthAction() {
+    private Action<PaymentState, PaymentEvent> preAuthAction() {
         return context -> {
 
             System.out.println("PreAuth was called");
@@ -71,6 +82,31 @@ public class StateMachineConfig extends StateMachineConfigurerAdapter<PaymentSta
                 System.out.println("Declined");
                 context.getStateMachine().sendEvent(
                         MessageBuilder.withPayload(PaymentEvent.PRE_AUTH_DECLINED)
+                                .setHeader(PaymentServiceImpl.PAYMENT_ID_HEADER, context.getMessageHeader(PaymentServiceImpl.PAYMENT_ID_HEADER))
+                                .build()
+                );
+            }
+
+        };
+    }
+
+
+    private Action<PaymentState, PaymentEvent> authAction() {
+        return context -> {
+
+            System.out.println("Auth ws called");
+
+            if (new Random().nextInt(10) < 9) {
+                System.out.println("Approved");
+                context.getStateMachine().sendEvent(
+                        MessageBuilder.withPayload(PaymentEvent.AUTH_APPROVED)
+                                .setHeader(PaymentServiceImpl.PAYMENT_ID_HEADER, context.getMessageHeader(PaymentServiceImpl.PAYMENT_ID_HEADER))
+                                .build()
+                );
+            } else {
+                System.out.println("Declined");
+                context.getStateMachine().sendEvent(
+                        MessageBuilder.withPayload(PaymentEvent.AUTH_DECLINED)
                                 .setHeader(PaymentServiceImpl.PAYMENT_ID_HEADER, context.getMessageHeader(PaymentServiceImpl.PAYMENT_ID_HEADER))
                                 .build()
                 );
